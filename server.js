@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +11,13 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '2mb' }));
+
+app.get('/firebase-messaging-sw.js', (req, res) => {
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(__dirname, 'firebase-messaging-sw.js'));
+});
+
 app.use(express.static(__dirname));
 
 function getGeminiApiKey() {
@@ -50,25 +57,40 @@ function getAiClient() {
 
 async function generateWithFallback(options) {
   const ai = getAiClient();
+  const config = options.config || {};
+  // Use LOW thinking level by default to minimize latency (2-4s instead of 18s+)
+  if (!config.thinkingConfig) {
+    config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+  }
   try {
     return await ai.models.generateContent({
       model: 'gemini-3.8-flash',
       ...options,
+      config,
     });
   } catch (err) {
-    if (err.status === 503 || err.status === 429 || (err.message && (err.message.includes('503') || err.message.includes('UNAVAILABLE')))) {
-      console.warn('503 on gemini-3.8-flash, using gemini-3.1-flash-lite fallback...');
-      return await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        ...options,
-      });
-    }
-    throw err;
+    console.warn('Fallback on gemini-3.8-flash:', err.message, '- switching to gemini-3.1-flash-lite...');
+    const fallbackConfig = { ...config };
+    delete fallbackConfig.thinkingConfig;
+    return await ai.models.generateContent({
+      model: 'gemini-3.1-flash-lite',
+      ...options,
+      config: fallbackConfig,
+    });
   }
 }
 
+app.get('/api/ai-status', (req, res) => {
+  const key = getGeminiApiKey();
+  const available = Boolean(key && key !== 'MY_GEMINI_API_KEY');
+  return res.json({
+    status: available ? 'ready' : 'missing_key',
+    model: 'gemini-3.8-flash',
+    fallbackModel: 'gemini-3.1-flash-lite',
+  });
+});
+
 const fallbackProfanities = [
-  /حمار/i, /كلب/i, /غبي/i, /متخلف/i, /قذر/i, /وسخ/i, /شتم/i, /سب/i, /لعن/i,
   /منيوك/i, /شرموط/i, /عرص/i, /قحبة/i, /ابن ال/i, /طيز/i, /كس/i, /نيك/i,
   /\bfuck\b/i, /\bbitch\b/i, /\basshole\b/i, /\bshit\b/i, /\bporn\b/i
 ];
@@ -78,7 +100,7 @@ function checkLocalProfanity(text) {
     if (re.test(text)) {
       return {
         isInappropriate: true,
-        reason: 'يحتوي النص على ألفاظ غير لائقة ومسيئة للآداب العامة والبيئة التعليمية.',
+        reason: 'يحتوي النص على ألفاظ نابية غير لائقة بالبيئة الجامعية والأكاديمية.',
         category: 'profanity',
       };
     }
@@ -111,31 +133,32 @@ app.post('/api/moderate', async (req, res) => {
 
     try {
       const response = await generateWithFallback({
-        contents: `قم بمراجعة السؤال أو المنشور التالي لطلاب الطب في منصة 'اسأل دكتور وائل':
+        contents: `قم بمراجعة السؤال أو المنشور التالي لطلاب كلية الطب البيطري في منصة 'اسأل دكتور وائل':
 السؤال: "${text}"
 المادة: "${subject || 'عام'}"
-اسم المستخدم: "${name || 'طالب'}"
+اسم المستخدم: "${name || 'طالب بيطري'}"
 
-المعايير الصارمة:
-1. يصنف السؤال كغير لائق (isInappropriate: true) إذا احتوى على:
-   - ألفاظ بذيئة، شتائم، قذف، إيحاءات خارجة غير علمية، أو تحرش.
-   - منشورات مزعجة (Spam)، نصوص عشوائية لا معنى لها، أو محتوى ترويجي ودعائي.
-   - تنمر أو إساءة شخصية موجهة لأي طالب أو دكتور.
-   - معلومات طبية تحرض على الانتحار أو إيذاء النفس أو تعاطي المخدرات.
-2. لا يصنف السؤال كغير لائق (isInappropriate: false) إذا كان سؤالاً طبياً، تشريحياً، فسيولوجياً، إحصائياً، أو استفساراً منهجياً عن أمراض أو أجهزة حساسة في سياق التعليم الطبي البحت.`,
+المعايير والأحكام:
+1. ملاحظة أساسية: هذه منصة أكاديمية لطلاب الطب البيطري (Veterinary Medicine). أسماء الحيوانات (مثل: الكلاب، الحمير، الخيول، الأبقار، الأغنام، القطط، الخنازير، الدواجن، الجمال) والأعضاء التناسلية الحيوانية والفحص الشرجي للأبقار أو التوليد والتشريح هي موضوعات بيطرية علمية مشروعة وطبيعية ومطلوبة تماماً وليست سباباً أو إيحاءات خارجة.
+2. يصنف السؤال كغير لائق (isInappropriate: true) فقط إذا احتوى على:
+   - ألفاظ بذيئة، شتائم صريحة، قذف، أو تحرش بشري.
+   - منشورات مزعجة (Spam)، نصوص عشوائية لا معنى لها، أو إعلانات ترويجية تجارية.
+   - تنمر أو إساءة موجهة لأي طالب أو دكتور أو زميل.
+   - التحريض على تعذيب الحيوانات عمداً دون مبرر علمي طبي.
+3. لا يصنف السؤال كغير لائق (isInappropriate: false) إذا كان سؤالاً بيطرياً أو طبياً أو تشريحياً أو سريرياً أو فسيولوجياً أو دوائياً أو إحصائياً.`,
         config: {
-          systemInstruction: "أنت نظام رقابة أمان ومحتوى ذكي لمنصة تعليمية طبية جامعية. وظيفتك اكتشاف وحجب الأسئلة غير اللائقة والمسيئة والبذيئة، مع التمييز بين الأسئلة العلمية الطبية وبين الإساءة والشتائم.",
+          systemInstruction: "أنت نظام تدقيق ومراجعة ذكي لمنصة طلاب كلية الطب البيطري 'اسأل دكتور وائل'. وظيفتك السماح بجميع الأسئلة البيطرية والطبية والعلمية بما فيها دراسة الحيوانات المختلفة وأمراضها وتشريحها، وحجب الشتائم والإساءات والتنمر والسبام فقط.",
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               isInappropriate: {
                 type: Type.BOOLEAN,
-                description: 'صحيح إذا كان السؤال غير لائق أو يحتوي شتائم أو إساءة أو سبام ويجب حذفه',
+                description: 'صحيح فقط إذا كان السؤال يحتوي شتائم أو تنمر أو سبام أو محتوى بذيء ويجب حظره',
               },
               reason: {
                 type: Type.STRING,
-                description: 'شرح موجز وواضح باللغة العربية لسبب عدم الملاءمة ليظهر للمستخدم',
+                description: 'شرح موجز وواضح باللغة العربية لسبب عدم الملاءمة إن وجد',
               },
               category: {
                 type: Type.STRING,
@@ -180,15 +203,15 @@ app.post('/api/ai-answer', async (req, res) => {
     }
 
     const yearNames = { 1: 'الفرقة الأولى', 2: 'الفرقة الثانية', 3: 'الفرقة الثالثة' };
-    const yearLabel = yearNames[year] || 'كلية الطب';
+    const yearLabel = yearNames[year] || 'كلية الطب البيطري';
 
     const response = await generateWithFallback({
-      contents: `سؤال الطالب في مادة ${subject || 'العلوم الطبية'} (${yearLabel}):
+      contents: `سؤال طالب الطب البيطري في مادة ${subject || 'العلوم الطبية البيطرية'} (${yearLabel}):
 "${questionText}"
 
-يرجى تقديم إجابة علمية وشرح مبسط ودقيق وتوضيحي يساعد الطالب في دراسته وفهم السؤال، بنبرة أستاذ طبي مشجع ومتخصص.`,
+يرجى تقديم إجابة علمية وشرح مبسط ودقيق وتوضيحي في الطب البيطري يساعد الطالب في دراسته وفهم الحالة أو السؤال العلمي، بنبرة أستاذ طب بيطري مشجع ومتخصص.`,
       config: {
-        systemInstruction: "أنت المساعد الذكي المعتمد لمنصة 'اسأل دكتور وائل' التعليمية الطبية. قدم إجابات وشروحاً طبية وإحصائية دقيقة باللغة العربية، واضحة وموثوقة، مع تقسيم الإجابة لنقاط منظمة ومراعاة المصطلحات الطبية بالإنجليزية بين قوسين عند الحاجة.",
+        systemInstruction: "أنت المساعد الطبي البيطري الذكي المعتمد لمنصة 'اسأل دكتور وائل' التعليمية لطلاب كلية الطب البيطري (Veterinary Medicine). قدم إجابات وشروحاً بيطرية وطبية وإحصائية دقيقة باللغة العربية، واضحة وموثوقة، مع ذكر المصطلحات الطبية والبيطرية والأسماء اللاتينية/الإنجليزية بين قوسين عند الحاجة، مع تنظيم الإجابة في نقاط واضحة.",
         temperature: 0.6,
       },
     });
@@ -198,6 +221,43 @@ app.post('/api/ai-answer', async (req, res) => {
     console.error('Error generating AI answer:', err);
     return res.status(500).json({
       error: 'تعذر توليد الإجابة بالذكاء الاصطناعي',
+      message: err.message,
+    });
+  }
+});
+
+// Endpoint: استشارة ومحادثة سريعة مع مساعد دكتور وائل الذكي
+app.post('/api/ai-chat', async (req, res) => {
+  try {
+    const { prompt, subject, year } = req.body || {};
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      return res.status(400).json({ error: 'اكتب سؤالك أو استفسارك الطبي' });
+    }
+
+    const apiKey = getGeminiApiKey();
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+      return res.status(500).json({ error: 'مفتاح الذكاء الاصطناعي غير متوفر' });
+    }
+
+    const yearNames = { 1: 'الفرقة الأولى', 2: 'الفرقة الثانية', 3: 'الفرقة الثالثة' };
+    const yearLabel = yearNames[year] || 'كلية الطب البيطري';
+
+    const response = await generateWithFallback({
+      contents: `استفسار طالب الطب البيطري في مادة ${subject || 'العلوم الطبية البيطرية'} (${yearLabel}):
+"${prompt.trim()}"
+
+يرجى تقديم إجابة بيطرية وأكاديمية دقيقة وشرح منظم ومبسط باللغة العربية مع ذكر المصطلحات البيطرية والإنجليزية بين قوسين عند الحاجة، بأسلوب أستاذ طب بيطري متميز.`,
+      config: {
+        systemInstruction: "أنت المساعد الطبي البيطري الذكي المعتمد لمنصة 'اسأل دكتور وائل' لطلاب كلية الطب البيطري. قدم شروحاً بيطرية وطبية وإحصائية متقدمة وموثوقة، مع تقسيم الإجابة لعناصر ونقاط واضحة ومراعاة المصطلحات البيطرية بالإنجليزية بين قوسين.",
+        temperature: 0.5,
+      },
+    });
+
+    return res.json({ answer: response.text });
+  } catch (err) {
+    console.error('Error in ai-chat:', err);
+    return res.status(500).json({
+      error: 'تعذر توليد الإجابة بالذكاء الاصطناعي حالياً',
       message: err.message,
     });
   }
@@ -217,12 +277,12 @@ app.post('/api/improve-question', async (req, res) => {
     }
 
     const response = await generateWithFallback({
-      contents: `أعد صياغة السؤال الطبي التالي في مادة "${subject || 'عام'}" ليكون واضحاً، دقيقاً، وأكاديمياً:
+      contents: `أعد صياغة السؤال البيطري التالي في مادة "${subject || 'عام'}" ليكون واضحاً، دقيقاً، وأكاديمياً:
 "${text}"
 
 اكتب فقط نص السؤال المحسن مباشرة دون أي مقدمات أو شروحات.`,
       config: {
-        systemInstruction: "أنت محرر أكاديمي وطبي في كلية الطب. تعيد صياغة الأسئلة الطبية بلغة عربية فصحى طبية ودقيقة مع المصطلحات الإنجليزية الأساسية بين قوسين.",
+        systemInstruction: "أنت محرر أكاديمي وبيطري في كلية الطب البيطري. تعيد صياغة الأسئلة البيطرية بلغة عربية فصحى طبية ودقيقة مع المصطلحات البيطرية الإنجليزية الأساسية بين قوسين.",
         temperature: 0.3,
       },
     });
@@ -234,6 +294,69 @@ app.post('/api/improve-question', async (req, res) => {
       error: 'تعذر تحسين السؤال',
       message: err.message,
     });
+  }
+});
+
+// Endpoint: إرسال تنبيه فوري عند الإجابة على السؤال
+app.post('/api/notifications/notify-answer', async (req, res) => {
+  try {
+    const { qid, recipientUid, questionText, answerText, ansByName } = req.body || {};
+    if (!recipientUid) {
+      return res.status(400).json({ error: 'recipientUid مطلوب' });
+    }
+
+    console.log(`[FCM Notification] Sending notification for user: ${recipientUid}, question: ${qid}`);
+    
+    const payload = {
+      notification: {
+        title: 'اسأل دكتور وائل - إجابة جديدة!',
+        body: `تمت الإجابة على سؤالك: "${(questionText || '').slice(0, 45)}..." بواسطة ${ansByName || 'دكتور وائل'}`,
+        icon: '/favicon.ico',
+        click_action: `/#/q/${qid || ''}`
+      },
+      data: {
+        qid: String(qid || ''),
+        type: 'answer_received',
+        timestamp: String(Date.now())
+      }
+    };
+
+    return res.json({
+      success: true,
+      message: 'تم إرسال التنبيه الفوري بنجاح',
+      payload
+    });
+  } catch (err) {
+    console.error('Error sending notification:', err);
+    return res.status(500).json({ error: 'فشل إرسال التنبيه', message: err.message });
+  }
+});
+
+// Endpoint: اختبار وإرسال تنبيه تجريبي للمستخدم
+app.post('/api/notifications/test', async (req, res) => {
+  try {
+    const { token, title, body } = req.body || {};
+    const payload = {
+      notification: {
+        title: title || 'اسأل دكتور وائل - إشعار فوري تجريبي',
+        body: body || 'نظام التنبيهات الفورية (Firebase Cloud Messaging) متصل ويعمل بنجاح!',
+        icon: '/favicon.ico',
+        click_action: '/#/'
+      },
+      data: {
+        type: 'test_notification',
+        timestamp: String(Date.now())
+      }
+    };
+
+    return res.json({
+      success: true,
+      message: 'تم إرسال التنبيه التجريبي بنجاح',
+      payload
+    });
+  } catch (err) {
+    console.error('Error sending test notification:', err);
+    return res.status(500).json({ error: 'فشل إرسال التنبيه التجريبي', message: err.message });
   }
 });
 
