@@ -58,24 +58,25 @@ function getAiClient() {
 async function generateWithFallback(options) {
   const ai = getAiClient();
   const config = options.config || {};
-  // Use LOW thinking level by default to minimize latency (2-4s instead of 18s+)
-  if (!config.thinkingConfig) {
-    config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
-  }
+  // Prefer gemini-3.1-flash-lite as primary: blazing fast (<2s) and high rate limit
   try {
-    return await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      ...options,
-      config,
-    });
-  } catch (err) {
-    console.warn('Fallback on gemini-3.8-flash:', err.message, '- switching to gemini-3.1-flash-lite...');
-    const fallbackConfig = { ...config };
-    delete fallbackConfig.thinkingConfig;
+    const liteConfig = { ...config };
+    delete liteConfig.thinkingConfig;
     return await ai.models.generateContent({
       model: 'gemini-3.1-flash-lite',
       ...options,
-      config: fallbackConfig,
+      config: liteConfig,
+    });
+  } catch (err) {
+    console.warn('Fallback on gemini-3.1-flash-lite:', err.message, '- attempting gemini-3.8-flash...');
+    const flashConfig = { ...config };
+    if (!flashConfig.thinkingConfig) {
+      flashConfig.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+    }
+    return await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      ...options,
+      config: flashConfig,
     });
   }
 }
@@ -85,8 +86,8 @@ app.get('/api/ai-status', (req, res) => {
   const available = Boolean(key && key !== 'MY_GEMINI_API_KEY');
   return res.json({
     status: available ? 'ready' : 'missing_key',
-    model: 'gemini-3.8-flash',
-    fallbackModel: 'gemini-3.1-flash-lite',
+    model: 'gemini-3.1-flash-lite',
+    fallbackModel: 'gemini-3.8-flash',
   });
 });
 

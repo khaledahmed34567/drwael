@@ -139,7 +139,7 @@ async function setupFCM(){
       console.log('[FCM] Received foreground message:',payload);
       const title=payload.notification?.title||'اسأل دكتور وائل - إجابة جديدة!';
       const body=payload.notification?.body||'تمت الإجابة على سؤالك بواسطة دكتور وائل!';
-      toast(`🔔 ${title}: ${body}`);
+      toast(`${title}: ${body}`);
       if(Notification.permission==='granted'){
         reg.showNotification(title,{
           body,
@@ -178,7 +178,7 @@ async function enablePushNotifications(){
     if(perm==='granted'){
       const reg=await navigator.serviceWorker.ready;
       await obtainFcmToken(reg);
-      toast("تم تفعيل التنبيهات الفورية (FCM) بنجاح ✓");
+      toast("تم تفعيل التنبيهات الفورية (FCM) بنجاح");
       try{
         reg.showNotification("اسأل دكتور وائل",{
           body:"تم تفعيل التنبيهات الفورية بنجاح! ستصلك إشعارات فورية عند الإجابة على أسئلتك.",
@@ -218,7 +218,7 @@ async function sendTestNotification(){
           data:d.payload.data
         });
       }
-      toast("وصل التنبيه الفوري بنجاح ✓");
+      toast("وصل التنبيه الفوري بنجاح");
     }
   }catch(e){toast("تعذر إرسال التنبيه التجريبي");}
 }
@@ -240,7 +240,7 @@ const fmtErr=e=>({"auth/invalid-credential":"بيانات الدخول غير ص
 function nav(){
   const h=location.hash||"#/",t=$("#tb"),hn=$("#nav");
   if(hn){
-    hn.innerHTML=`<button type="button" class="btn s o" id="hdrFaqBtn" style="height:34px;padding:0 10px;gap:5px" title="دليل وتعليمات ومعايير المنصة">${I(IC.help)}<span>التعليمات</span></button><button type="button" class="btn s o" id="hdrStatsBtn" style="height:34px;padding:0 10px;gap:5px;color:#059669;background:#05966914" title="إحصائيات تفاعل المواد (Recharts)">${I(IC.chart)}<span>الإحصائيات</span></button><button type="button" class="btn s" id="hdrAiBtn" style="height:34px;padding:0 10px;gap:5px;background:linear-gradient(135deg,#7928ca,#4338ca);color:#fff;box-shadow:0 3px 12px #7928ca33" title="المساعد البيطري الذكي">${I(IC.sparkles)}<span>المساعد الذكي</span></button>`;
+    hn.innerHTML=`<button type="button" class="btn s o" id="hdrFaqBtn" style="height:34px;padding:0 10px;gap:5px" title="دليل وتعليمات ومعايير المنصة">${I(IC.help)}<span>التعليمات</span></button><button type="button" class="btn s o" id="hdrStatsBtn" style="height:34px;padding:0 10px;gap:5px;color:#059669;background:#05966914" title="إحصائيات تفاعل المواد">${I(IC.chart)}<span>الإحصائيات</span></button><button type="button" class="btn s" id="hdrAiBtn" style="height:34px;padding:0 10px;gap:5px;background:linear-gradient(135deg,#7928ca,#4338ca);color:#fff;box-shadow:0 3px 12px #7928ca33" title="المساعد البيطري الذكي">${I(IC.sparkles)}<span>المساعد الذكي</span></button>`;
     $("#hdrFaqBtn").onclick=()=>openFaqModal();
     $("#hdrStatsBtn").onclick=()=>openStatsModal();
     $("#hdrAiBtn").onclick=()=>{location.hash='#/ai'};
@@ -250,64 +250,82 @@ function nav(){
   t.innerHTML=`<button class="t ${h=="#/"?"on":""}" aria-label="home" onclick="location.hash='#/'">${I(IC.home)}</button><button class="t ${h=="#/subjects"?"on":""}" aria-label="subjects" onclick="location.hash='#/subjects'">${I(IC.book)}</button><button class="t p" aria-label="ask" onclick="location.hash='#/ask'">${I(IC.plus)}</button><button class="t ${h=="#/stats"?"on":""}" aria-label="stats" onclick="location.hash='#/stats'" style="${h=="#/stats"?'background:#0596691a;color:#059669':''}">${I(IC.chart)}</button><button class="t ${h=="#/ai"?"on":""}" aria-label="ai" onclick="location.hash='#/ai'" style="${h=="#/ai"?'background:#7928ca20;color:#7928ca':''}">${I(IC.sparkles)}</button><button class="t ${h=="#/me"?"on":""}" aria-label="me" onclick="location.hash='#/me'">${I(IC.user)}${unr()?'<i class="dot"></i>':""}</button>`
 }
 onAuthStateChanged(auth,async u=>{me=u;prof=null;if(unW){unW();unW=null}W=0;if(u){const s=await getDoc(doc(db,"esalwael",u.uid));prof=s.exists()?s.data():null;watch();setupFCM();if(prof&&u.email&&prof.email!==u.email){prof.email=u.email;updateDoc(doc(db,"esalwael",u.uid),{email:u.email}).catch(()=>{});if(prof.phone)setDoc(doc(db,"esalphones",prof.phone),{email:u.email,uid:u.uid}).catch(()=>{})}}ready=true;try{u?localStorage.li=1:(localStorage.removeItem("li"),localStorage.removeItem("fc"))}catch(e){}nav();route();hideSplash()});
-function watch(){if(W||!prof?.year)return;W=1;let first=true;unW=onSnapshot(query(collection(db,"esalquestions"),where("uid","==",me.uid),where("year","==",prof.year)),s=>{NT=s.docs.map(d=>({id:d.id,...d.data()})).filter(q=>q.answer&&q.ansAt).sort((a,b)=>b.ansAt.toMillis()-a.ansAt.toMillis());nav();s.docChanges().forEach(async c=>{const d=c.doc.data();if(!first&&c.type=="modified"&&d.answer){toast("تمت الإجابة على سؤالك ✓");try{if('serviceWorker' in navigator&&Notification.permission=="granted"){const reg=await navigator.serviceWorker.ready;reg.showNotification("اسأل دكتور وائل - إجابة جديدة!",{body:`تمت الإجابة على سؤالك بواسطة ${d.ansBy?.name||"دكتور وائل"}`,icon:LOGO,dir:"rtl",lang:"ar",data:{qid:c.doc.id}})}else if(Notification.permission=="granted"){new Notification("اسأل دكتور وائل",{body:`تمت الإجابة على سؤالك بواسطة ${d.ansBy?.name||"دكتور وائل"}`,icon:LOGO})}}catch(e){}}});first=false});try{if(Notification.permission=="default")Notification.requestPermission()}catch(e){}}
+function watch(){if(W||!prof?.year)return;W=1;let first=true;unW=onSnapshot(query(collection(db,"esalquestions"),where("uid","==",me.uid),where("year","==",prof.year)),s=>{NT=s.docs.map(d=>({id:d.id,...d.data()})).filter(q=>q.answer&&q.ansAt).sort((a,b)=>b.ansAt.toMillis()-a.ansAt.toMillis());nav();s.docChanges().forEach(async c=>{const d=c.doc.data();if(!first&&c.type=="modified"&&d.answer){toast("تمت الإجابة على سؤالك");try{if('serviceWorker' in navigator&&Notification.permission=="granted"){const reg=await navigator.serviceWorker.ready;reg.showNotification("اسأل دكتور وائل - إجابة جديدة!",{body:`تمت الإجابة على سؤالك بواسطة ${d.ansBy?.name||"دكتور وائل"}`,icon:LOGO,dir:"rtl",lang:"ar",data:{qid:c.doc.id}})}else if(Notification.permission=="granted"){new Notification("اسأل دكتور وائل",{body:`تمت الإجابة على سؤالك بواسطة ${d.ansBy?.name||"دكتور وائل"}`,icon:LOGO})}}catch(e){}}});first=false});try{if(Notification.permission=="default")Notification.requestPermission()}catch(e){}}
 addEventListener("hashchange",route);
 function route(){if(!ready)return;window.scrollTo(0,0);const h=location.hash||"#/";nav();if(!me)return authV();if(!prof||!(prof.year>=1&&prof.year<=3))return complete();if(h=="#/faq"||h=="#/help")return faqV();if(h=="#/stats")return statsV();if(h=="#/ai")return aiV();if(h.startsWith("#/q/"))return view(h.slice(4));if(h.startsWith("#/u/"))return userV(h.slice(4));if(h=="#/subjects")return subjV();if(h=="#/me")return meV();if(h=="#/ask")return askV();feed()}
 
-// بيانات ومقررات كلية الطب البيطري
-const VET_SUBJECTS=[
-  {name:"تشريح بيطري وأجنة",year:1,baseQ:34,baseAns:31,baseInt:104},
-  {name:"فسيولوجيا بيطرية",year:1,baseQ:28,baseAns:26,baseInt:88},
-  {name:"كيمياء حيوية وبيولوجيا جزيئية",year:1,baseQ:22,baseAns:20,baseInt:68},
-  {name:"أنسجة وخلايا بيطرية",year:1,baseQ:19,baseAns:17,baseInt:54},
-  {name:"سلوك ورعاية الحيوان",year:1,baseQ:17,baseAns:16,baseInt:49},
-  {name:"إحصاء ووبائيات بيطرية",year:1,baseQ:38,baseAns:36,baseInt:132},
-  {name:"باثولوجيا بيطرية عامة",year:2,baseQ:32,baseAns:30,baseInt:99},
-  {name:"فارماكولوجيا وأدوية بيطرية",year:2,baseQ:42,baseAns:39,baseInt:141},
-  {name:"طفيليات بيطرية",year:2,baseQ:27,baseAns:25,baseInt:82},
-  {name:"ميكروبيولوجيا ومناعة بيطرية",year:2,baseQ:30,baseAns:28,baseInt:95},
-  {name:"تشريح مقارن بيطري",year:2,baseQ:24,baseAns:22,baseInt:73},
-  {name:"باطنة وتشخيص بيطري",year:3,baseQ:46,baseAns:43,baseInt:156},
-  {name:"جراحة وتخدير بيطري",year:3,baseQ:39,baseAns:36,baseInt:128},
-  {name:"توليد وتناسل وتلقيح اصطناعي",year:3,baseQ:35,baseAns:33,baseInt:118},
-  {name:"أمراض دواجن وأسماك",year:3,baseQ:26,baseAns:24,baseInt:84},
-  {name:"أمراض مشتركة وسريرية",year:3,baseQ:25,baseAns:23,baseInt:79}
-];
-
+// الرسوم البيانية والإحصائيات
 const CHART_COLORS=['#C42341','#7928ca','#2563eb','#059669','#d97706','#dc2626','#0891b2','#4f46e5','#ec4899','#10b981'];
 
-function getStatsData(filterYear=0){
-  let list=VET_SUBJECTS.map(s=>({
-    subject:s.name,
-    year:s.year,
-    questions:s.baseQ,
-    answered:s.baseAns,
-    interactions:s.baseInt
-  }));
-  if(filterYear&&filterYear>=1&&filterYear<=3){
-    list=list.filter(s=>s.year===filterYear);
-  }
-  if(Array.isArray(Q)&&Q.length>0){
-    Q.forEach(q=>{
-      if(filterYear&&q.year&&q.year!==filterYear)return;
-      const subName=q.subject||"عام";
-      let item=list.find(s=>s.subject===subName);
-      if(!item){
-        item={subject:subName,year:q.year||1,questions:0,answered:0,interactions:0};
-        list.push(item);
+async function getStatsData(filterYear=0){
+  let qDocs=[];
+  try{
+    if(filterYear&&filterYear>=1&&filterYear<=3){
+      const snap=await getDocs(query(collection(db,"esalquestions"),where("year","==",filterYear),limit(300)));
+      qDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    }else{
+      try{
+        const snap=await getDocs(query(collection(db,"esalquestions"),limit(300)));
+        qDocs=snap.docs.map(d=>({id:d.id,...d.data()}));
+      }catch(err){
+        const results=await Promise.all([1,2,3].map(y=>
+          getDocs(query(collection(db,"esalquestions"),where("year","==",y),limit(100))).catch(()=>({docs:[]}))
+        ));
+        qDocs=results.flatMap(r=>r.docs.map(d=>({id:d.id,...d.data()})));
       }
-      item.questions+=1;
-      if(q.answer)item.answered+=1;
-      item.interactions+=(q.answer?3:1)+(q.imgs?.length||0)+2;
-    });
+    }
+  }catch(e){
+    qDocs=Array.isArray(Q)?(filterYear?Q.filter(q=>q.year===filterYear):Q):[];
   }
-  const totalQuestions=list.reduce((acc,s)=>acc+s.questions,0);
-  const totalAnswered=list.reduce((acc,s)=>acc+s.answered,0);
+
+  let dbSubjects=[];
+  try{
+    let subQuery;
+    if(filterYear&&filterYear>=1&&filterYear<=3){
+      subQuery=query(collection(db,"esalsubjects"),where("year","==",filterYear),where("status","==","approved"));
+    }else{
+      subQuery=query(collection(db,"esalsubjects"),where("status","==","approved"));
+    }
+    const sSnap=await getDocs(subQuery);
+    dbSubjects=sSnap.docs.map(d=>d.data());
+  }catch(e){}
+
+  const subjectMap=new Map();
+  // فقط المواد المعتمدة في قاعدة البيانات (esalsubjects)
+  dbSubjects.forEach(s=>{
+    if(s.name&&(!filterYear||s.year===filterYear)){
+      if(!subjectMap.has(s.name)){
+        subjectMap.set(s.name,{subject:s.name,year:s.year||1,questions:0,answered:0,interactions:0});
+      }
+    }
+  });
+
+  // والأسئلة الفعلية الموجودة في قاعدة البيانات
+  qDocs.forEach(q=>{
+    if(filterYear&&q.year&&q.year!==filterYear)return;
+    const subName=(q.subject||"عام").trim();
+    if(!subjectMap.has(subName)){
+      subjectMap.set(subName,{subject:subName,year:q.year||1,questions:0,answered:0,interactions:0});
+    }
+    const item=subjectMap.get(subName);
+    item.questions+=1;
+    if(q.answer)item.answered+=1;
+    item.interactions+=(q.answer?1:0)+(q.imgs?.length||0);
+  });
+
+  const list=Array.from(subjectMap.values());
+  const totalQuestions=qDocs.length;
+  const totalAnswered=qDocs.filter(q=>q.answer).length;
   const totalInteractions=list.reduce((acc,s)=>acc+s.interactions,0);
   const ansRate=totalQuestions?Math.round((totalAnswered/totalQuestions)*100):0;
-  const topSubject=[...list].sort((a,b)=>b.interactions-a.interactions)[0]?.subject||"باطنة وتشخيص بيطري";
+
+  list.sort((a,b)=>(b.questions-a.questions)||(b.interactions-a.interactions)||a.subject.localeCompare(b.subject,"ar"));
+  const activeSubs=list.filter(s=>s.questions>0);
+  const chartData=(activeSubs.length>0?activeSubs:list).slice(0,10);
+  const topSubject=activeSubs[0]?.subject||(totalQuestions>0?list[0]?.subject:"لا توجد أسئلة مسجلة بعد");
+
   return {
-    chartData:list.slice(0,10),
+    chartData,
     allSubjects:list,
     totalQuestions,
     totalAnswered,
@@ -320,6 +338,10 @@ function getStatsData(filterYear=0){
 function renderRecharts(mountId,chartData,chartType='bar'){
   const mountEl=document.getElementById(mountId);
   if(!mountEl)return;
+  if(!chartData||chartData.length===0||chartData.every(d=>d.questions===0&&d.interactions===0)){
+    mountEl.innerHTML=`<div style="text-align:center;padding:46px 20px;color:#6b7280;line-height:1.9"><div class="ava big" style="background:#05966914;color:#059669;margin:0 auto 12px">${I(IC.chart)}</div><b style="font-size:16px;color:#1f2937;display:block;margin-bottom:6px">لا توجد أسئلة مسجلة في قاعدة البيانات حالياً</b><p class="meta" style="font-size:14px;margin-bottom:14px">الإحصائيات مربوطة مباشرة بقاعدة البيانات الحية. عند طرح أي سؤال بيطري ستظهر المخططات البيانية فوراً.</p><button type="button" class="btn s" onclick="location.hash='#/ask'" style="background:var(--c);color:#fff;margin:auto">طرح أول سؤال بيطري</button></div>`;
+    return;
+  }
   const R=window.Recharts,React=window.React,ReactDOM=window.ReactDOM;
   if(R&&React&&ReactDOM){
     const e=React.createElement;
@@ -376,7 +398,7 @@ function renderRecharts(mountId,chartData,chartType='bar'){
           e(Legend,{wrapperStyle:{direction:'rtl',paddingTop:'12px',fontSize:'13px'}}),
           e(Bar,{dataKey:'questions',name:'الأسئلة المطروحة',fill:'#C42341',radius:[6,6,0,0]}),
           e(Bar,{dataKey:'answered',name:'الأسئلة المجابة',fill:'#10B981',radius:[6,6,0,0]}),
-          e(Bar,{dataKey:'interactions',name:'تفاعل الطلاب (إعجابات + تعليقات)',fill:'#7928ca',radius:[6,6,0,0]})
+          e(Bar,{dataKey:'interactions',name:'تفاعل الطلاب (الإجابات والصور)',fill:'#7928ca',radius:[6,6,0,0]})
         )
       );
     }
@@ -394,19 +416,21 @@ function renderRecharts(mountId,chartData,chartType='bar'){
       return;
     }catch(err){console.warn('[Recharts Render Warning]',err)}
   }
-  const maxV=Math.max(...chartData.map(d=>Math.max(d.questions,d.answered,d.interactions)),10);
+  const maxV=Math.max(...chartData.map(d=>Math.max(d.questions,d.answered,d.interactions)),1);
   mountEl.innerHTML=`<div style="padding:10px 0"><div class="row" style="justify-content:space-between;margin-bottom:8px"><span class="meta">مخطط تفاعل المواد البيطرية</span><div class="row" style="gap:10px;font-size:12px"><span style="color:#C42341">■ الأسئلة</span><span style="color:#10B981">■ المجابة</span><span style="color:#7928ca">■ التفاعل</span></div></div><div style="display:flex;flex-direction:column;gap:12px">${chartData.map(d=>`<div><div class="row" style="justify-content:space-between;margin-bottom:3px;font-size:13px"><b>${esc(d.subject)}</b><span class="meta">${d.questions} سؤال · ${d.answered} إجابة · ${d.interactions} تفاعل</span></div><div style="height:14px;background:#f1f1f4;border-radius:8px;overflow:hidden;display:flex;gap:2px"><div style="height:100%;background:#C42341;border-radius:6px;width:${Math.round((d.questions/maxV)*100)}%" title="الأسئلة"></div><div style="height:100%;background:#10B981;border-radius:6px;width:${Math.round((d.answered/maxV)*100)}%" title="المجابة"></div><div style="height:100%;background:#7928ca;border-radius:6px;width:${Math.round((d.interactions/maxV)*100)}%" title="التفاعل"></div></div></div>`).join("")}</div></div>`;
 }
 
 function statsH(scope){
-  return `<div class="box" style="background:#fff;border-radius:24px;padding:18px;margin-bottom:12px;box-shadow:0 2px 14px #0000000a"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row" style="gap:10px"><div class="ava" style="background:#059669;color:#fff">${I(IC.chart)}</div><div><b style="font-size:17px;color:#059669">إحصائيات كلية الطب البيطري</b><p class="meta">تحليل بياني تفاعلي بالـ Recharts للأسئلة المطروحة ومعدل تفاعل الطلاب وإجابات دكتور وائل</p></div></div><span class="tag" style="background:#05966914;color:#059669">Recharts Dashboard</span></div><div class="stats" id="${scope}_kpis" style="margin-bottom:12px"><div><b id="${scope}_totalQ" style="color:var(--c)">--</b><span>إجمالي الأسئلة</span></div><div><b id="${scope}_ansRate" style="color:#10b981">--%</b><span>نسبة الإجابة</span></div><div><b id="${scope}_totalInt" style="color:#7928ca">--</b><span>تفاعل ونقاشات</span></div></div><div style="margin-bottom:10px"><p class="meta" style="margin-bottom:5px">تصفية حسب الفرقة الدراسية:</p><div class="chips" id="${scope}_yearChips"><button class="chip on" data-y="0">جميع الفرق</button><button class="chip" data-y="1">الفرقة الأولى</button><button class="chip" data-y="2">الفرقة الثانية</button><button class="chip" data-y="3">الفرقة الثالثة</button></div></div><div style="margin-bottom:8px"><p class="meta" style="margin-bottom:5px">نوع الرسم البياني (Recharts):</p><div class="chips" id="${scope}_typeChips"><button class="chip on" data-t="bar">📊 مخطط مقارنة تفاعلي (Bar)</button><button class="chip" data-t="pie">🍩 توزيع الأسئلة النسبي (Pie)</button><button class="chip" data-t="area">📈 كثافة تفاعل الطلاب (Area)</button></div></div><div id="${scope}_chartMount" style="width:100%;min-height:330px;background:#fcfcfd;border-radius:20px;padding:12px;margin:10px 0;border:1px solid #f1f1f4"><div class="meta" style="text-align:center;padding:60px 0">⏳ جارٍ تجهيز المخطط البياني Recharts…</div></div><div class="row" style="justify-content:space-between;margin-top:8px"><span class="meta" id="${scope}_topSubMeta">🏆 المادة الأكثر نشاطاً: --</span><button type="button" class="btn s o" id="${scope}_refreshBtn" style="font-size:13px;padding:4px 12px;gap:5px">${I(IC.refresh)}<span>تحديث البيانات</span></button></div></div><div class="box" style="background:#fff;border-radius:22px;padding:18px;margin-bottom:12px"><h3 style="margin-bottom:10px;font-size:17px">تفاصيل المواد البيطرية والتفاعل الطلابي</h3><div id="${scope}_subList" style="display:flex;flex-direction:column;gap:10px"></div></div>`;
+  return `<div class="box" style="background:#fff;border-radius:24px;padding:18px;margin-bottom:12px;box-shadow:0 2px 14px #0000000a"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row" style="gap:10px"><div class="ava" style="background:#059669;color:#fff">${I(IC.chart)}</div><div><b style="font-size:17px;color:#059669">إحصائيات كلية الطب البيطري</b><p class="meta">تحليل بياني مباشر ومربوط بقاعدة البيانات للأسئلة المطروحة وإجابات دكتور وائل ومستوى التفاعل</p></div></div><span class="tag" style="background:#05966914;color:#059669">بيانات حية مباشرة</span></div><div class="stats" id="${scope}_kpis" style="margin-bottom:12px"><div><b id="${scope}_totalQ" style="color:var(--c)">--</b><span>إجمالي الأسئلة</span></div><div><b id="${scope}_ansRate" style="color:#10b981">--%</b><span>نسبة الإجابة</span></div><div><b id="${scope}_totalInt" style="color:#7928ca">--</b><span>تفاعل ونقاشات</span></div></div><div style="margin-bottom:10px"><p class="meta" style="margin-bottom:5px">تصفية حسب الفرقة الدراسية:</p><div class="chips" id="${scope}_yearChips"><button class="chip on" data-y="0">جميع الفرق</button><button class="chip" data-y="1">الفرقة الأولى</button><button class="chip" data-y="2">الفرقة الثانية</button><button class="chip" data-y="3">الفرقة الثالثة</button></div></div><div style="margin-bottom:8px"><p class="meta" style="margin-bottom:5px">نوع الرسم البياني (Recharts):</p><div class="chips" id="${scope}_typeChips"><button class="chip on" data-t="bar">مخطط مقارنة تفاعلي (Bar)</button><button class="chip" data-t="pie">توزيع الأسئلة النسبي (Pie)</button><button class="chip" data-t="area">كثافة تفاعل الطلاب (Area)</button></div></div><div id="${scope}_chartMount" style="width:100%;min-height:330px;background:#fcfcfd;border-radius:20px;padding:12px;margin:10px 0;border:1px solid #f1f1f4"><div class="meta" style="text-align:center;padding:60px 0">جارٍ قراءة البيانات الحية من قاعدة البيانات…</div></div><div class="row" style="justify-content:space-between;margin-top:8px"><span class="meta" id="${scope}_topSubMeta">المادة الأكثر نشاطاً: --</span><div class="row" style="gap:6px"><button type="button" class="btn s o" id="${scope}_toggleFeedBtn" style="font-size:13px;padding:4px 12px;gap:5px">${I(IC.trash)}<span id="${scope}_toggleFeedTxt">${localStorage.hideStatsCard==='1'?'إظهار في الرئيسية':'حذف من الرئيسية'}</span></button><button type="button" class="btn s o" id="${scope}_refreshBtn" style="font-size:13px;padding:4px 12px;gap:5px">${I(IC.refresh)}<span>تحديث البيانات</span></button></div></div></div><div class="box" style="background:#fff;border-radius:22px;padding:18px;margin-bottom:12px"><h3 style="margin-bottom:10px;font-size:17px">تفاصيل المواد البيطرية من قاعدة البيانات</h3><div id="${scope}_subList" style="display:flex;flex-direction:column;gap:10px"></div></div>`;
 }
 
 function mountStatsCharts(scope,initYear=0){
   let selectedYear=initYear||(prof?.year||0);
   let selectedType='bar';
-  const update=()=>{
-    const stats=getStatsData(selectedYear);
+  const update=async()=>{
+    const mountEl=document.getElementById(`${scope}_chartMount`);
+    if(mountEl)mountEl.innerHTML=`<div class="meta" style="text-align:center;padding:60px 0">جارٍ قراءة البيانات الحية من قاعدة البيانات…</div>`;
+    const stats=await getStatsData(selectedYear);
     const qEl=document.getElementById(`${scope}_totalQ`);
     const rEl=document.getElementById(`${scope}_ansRate`);
     const iEl=document.getElementById(`${scope}_totalInt`);
@@ -414,7 +438,7 @@ function mountStatsCharts(scope,initYear=0){
     if(qEl)qEl.textContent=stats.totalQuestions;
     if(rEl)rEl.textContent=stats.ansRate+'%';
     if(iEl)iEl.textContent=stats.totalInteractions;
-    if(tMeta)tMeta.textContent=`🏆 المادة الأكثر تفاعلاً: ${stats.topSubject} (${stats.totalInteractions} تفاعل)`;
+    if(tMeta)tMeta.textContent=stats.totalQuestions>0?`المادة الأكثر تفاعلاً: ${stats.topSubject} (${stats.chartData.find(s=>s.subject===stats.topSubject)?.interactions||stats.totalInteractions} تفاعل)`:`لا توجد أسئلة مسجلة في قاعدة البيانات بعد`;
     renderRecharts(`${scope}_chartMount`,stats.chartData,selectedType);
     const listEl=document.getElementById(`${scope}_subList`);
     if(listEl){
@@ -466,16 +490,30 @@ function mountStatsCharts(scope,initYear=0){
   const refBtn=document.getElementById(`${scope}_refreshBtn`);
   if(refBtn){
     refBtn.onclick=()=>{
-      toast("جارٍ تحديث الإحصائيات البيانية…");
+      toast("جارٍ تحديث الإحصائيات من قاعدة البيانات…");
       loadQ().then(update).catch(update);
     };
   }
+  const toggleBtn=document.getElementById(`${scope}_toggleFeedBtn`);
+  if(toggleBtn){
+    toggleBtn.onclick=()=>{
+      if(localStorage.hideStatsCard==='1'){
+        localStorage.removeItem('hideStatsCard');
+        toast("تمت استعادة بطاقة الإحصائيات في الصفحة الرئيسية");
+      }else{
+        localStorage.hideStatsCard='1';
+        toast("تم حذف بطاقة الإحصائيات من الصفحة الرئيسية");
+      }
+      const txt=document.getElementById(`${scope}_toggleFeedTxt`);
+      if(txt)txt.textContent=localStorage.hideStatsCard==='1'?'إظهار في الرئيسية':'حذف من الرئيسية';
+      if(location.hash==='#/'||location.hash==='')feed();
+    };
+  }
   update();
-  setTimeout(update,250);
 }
 
 function openStatsModal(initYear){
-  const o=openSheet(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;font-size:18px;display:flex;align-items:center;gap:6px">${I(IC.chart)}<span>إحصائيات تفاعل المواد (Recharts)</span></h3><button type="button" class="btn s o i" id="statsCloseBtn">${XI}</button></div><div style="max-height:78vh;overflow-y:auto;padding-right:2px">${statsH('modal')}</div>`);
+  const o=openSheet(`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0;font-size:18px;display:flex;align-items:center;gap:6px">${I(IC.chart)}<span>إحصائيات تفاعل المواد (قاعدة البيانات)</span></h3><button type="button" class="btn s o i" id="statsCloseBtn">${XI}</button></div><div style="max-height:78vh;overflow-y:auto;padding-right:2px">${statsH('modal')}</div>`);
   document.getElementById("statsCloseBtn").onclick=()=>o.remove();
   mountStatsCharts('modal',initYear);
 }
@@ -508,14 +546,18 @@ function faqV(){
   A.innerHTML=`<div class="row" style="margin-bottom:12px;justify-content:space-between"><div class="row" style="gap:8px"><button class="btn s i o" onclick="history.back()" aria-label="back">${I(IC.back)}</button><span style="font-family:T2,sans-serif;font-size:18px">التعليمات والتوجيهات البيطرية</span></div><div class="row" style="gap:6px"><button class="btn s o" onclick="openStatsModal()">${I(IC.chart)}<span>الإحصائيات</span></button><button class="btn s" onclick="location.hash='#/ai'" style="background:#7928ca;color:#fff">${I(IC.sparkles)}<span>المساعد الذكي</span></button></div></div>${faqH()}`;
 }
 
-function aiV(){
-  A.innerHTML=`<div class="row" style="margin-bottom:12px;justify-content:space-between"><div class="row" style="gap:8px"><button class="btn s i o" onclick="history.back()" aria-label="back">${I(IC.back)}</button><h2 style="margin:0;color:#7928ca;display:flex;align-items:center;gap:6px">${I(IC.sparkles)}<span>المساعد الطبي البيطري الذكي</span></h2></div><div class="row" style="gap:6px"><button class="btn s o" onclick="openStatsModal()">${I(IC.chart)}<span>الإحصائيات</span></button><button class="btn s o" onclick="openFaqModal()">${I(IC.help)}<span>المعايير</span></button></div></div><div class="box" style="background:#fff;border-radius:24px;padding:20px;margin-bottom:14px;box-shadow:0 4px 20px #7928ca14;border:1.5px solid #7928ca20"><div class="row" style="gap:10px;margin-bottom:12px"><div class="ava" style="background:#7928ca;color:#fff">${I(IC.sparkles)}</div><div><b style="font-size:17px;color:#7928ca">مساعد دكتور وائل للطب البيطري والإحصاء الحيوي</b><p class="meta">استشر الذكاء الاصطناعي في أي استفسار بيطري، إحصائي، أو تشخيصي حيواني واحصل على إجابة وشرح فوري</p></div></div><div style="margin-bottom:10px"><p class="meta" style="margin-bottom:6px">التخصص أو المادة البيطرية:</p><div class="chips" id="aiSubChips"><button class="chip on" data-s="عام">عام</button><button class="chip" data-s="باطنة بيطرية">باطنة بيطرية</button><button class="chip" data-s="جراحة وتخدير">جراحة وتخدير</button><button class="chip" data-s="تشريح بيطري">تشريح بيطري</button><button class="chip" data-s="فسيولوجيا بيطرية">فسيولوجيا بيطرية</button><button class="chip" data-s="باثولوجيا وأمراض معدية">باثولوجيا وأمراض معدية</button><button class="chip" data-s="فارماكولوجيا وأدوية">فارماكولوجيا وأدوية</button><button class="chip" data-s="توليد وتناسل">توليد وتناسل</button><button class="chip" data-s="طفيليات بيطرية">طفيليات بيطرية</button><button class="chip" data-s="إحصاء ووبائيات بيطرية">إحصاء ووبائيات بيطرية</button></div></div><textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="اكتب استفسارك البيطري هنا… مثال: ما هي الفروق التشريحية بين معدة المجترات والخيل؟ أو ما هي بروتوكولات علاج حمى الحليب (Milk Fever) في الأبقار؟"></textarea><div class="row" style="justify-content:space-between;margin:6px 0 12px"><p class="meta" id="aiCount">0 / 2000</p><button type="button" class="btn s" id="aiAskBtn" style="background:linear-gradient(135deg,#7928ca,#4338ca);color:#fff;padding:8px 20px">${I(IC.sparkles)}<span>إجابة وشرح بيطري فوري</span></button></div><p class="meta" style="margin-bottom:6px">استفسارات بيطرية مقترحة سريعة:</p><div class="chips" id="aiSuggestions"><button class="chip" data-q="ما هي الفروق التشريحية بين معدة المجترات ومعدة الخيل؟">معدة المجترات والخيل</button><button class="chip" data-q="اشرح باختصار آلية وأعراض حمى الحليب (Milk Fever) في الأبقار">Milk Fever في الأبقار</button><button class="chip" data-q="ما هو البروتوكول الوقائي والعلاجي لداء الكلب (Rabies) في الحيوانات؟">Rabies وسعار الحيوان</button><button class="chip" data-q="كيف يختلف فحص النبض والحرارة الطبيعية بين الخيل والأبقار والكلاب؟">المؤشرات الحيوية المقارنة</button></div></div><div id="aiResultCard" class="box" style="display:none;background:#fff;border-radius:24px;padding:20px;border-right:4px solid #7928ca;box-shadow:0 4px 20px #00000010"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row" style="gap:8px"><div class="ava" style="background:#7928ca20;color:#7928ca">${I(IC.sparkles)}</div><b style="color:#7928ca;font-size:17px">إجابة وشرح المساعد الطبي البيطري الذكي</b></div><div class="row" style="gap:6px"><button class="btn s o i" id="aiCopyBtn" title="نسخ الإجابة">${I(IC.link)}</button><button class="btn s o" id="aiPostAsQBtn" style="color:var(--c);background:#c4234114">${I(IC.send)}<span>نشر كسؤال</span></button></div></div><div id="aiResultText" style="white-space:pre-wrap;line-height:1.9;font-size:15px;color:#2c2c2e"></div></div>`;
+async function aiV(){
+  let dbSubs=[];
+  try{dbSubs=await subs()}catch(e){}
+  const subChipsHtml=['<button class="chip on" data-s="عام">عام</button>',...dbSubs.map(s=>`<button class="chip" data-s="${esc(s.name)}">${esc(s.name)}</button>`)].join("");
+
+  A.innerHTML=`<div class="row" style="margin-bottom:12px;justify-content:space-between"><div class="row" style="gap:8px"><button class="btn s i o" onclick="history.back()" aria-label="back">${I(IC.back)}</button><h2 style="margin:0;color:#7928ca;display:flex;align-items:center;gap:6px">${I(IC.sparkles)}<span>المساعد الطبي البيطري الذكي</span></h2></div><div class="row" style="gap:6px"><button class="btn s o" onclick="openStatsModal()">${I(IC.chart)}<span>الإحصائيات</span></button><button class="btn s o" onclick="openFaqModal()">${I(IC.help)}<span>المعايير</span></button></div></div><div class="box" style="background:#fff;border-radius:24px;padding:20px;margin-bottom:14px;box-shadow:0 4px 20px #7928ca14;border:1.5px solid #7928ca20"><div class="row" style="gap:10px;margin-bottom:12px"><div class="ava" style="background:#7928ca;color:#fff">${I(IC.sparkles)}</div><div><b style="font-size:17px;color:#7928ca">مساعد دكتور وائل للطب البيطري والإحصاء الحيوي</b><p class="meta">استشر الذكاء الاصطناعي في أي استفسار بيطري، إحصائي، أو تشخيصي حيواني واحصل على إجابة وشرح فوري</p></div></div><div style="margin-bottom:10px"><p class="meta" style="margin-bottom:6px">التخصص أو المادة:</p><div class="chips" id="aiSubChips">${subChipsHtml}</div></div><textarea id="aiPrompt" rows="4" maxlength="2000" placeholder="اكتب استفسارك البيطري هنا… مثال: ما هي الفروق التشريحية بين معدة المجترات والخيل؟ أو ما هي بروتوكولات علاج حمى الحليب (Milk Fever) في الأبقار؟"></textarea><div class="row" style="justify-content:space-between;margin:6px 0 12px"><p class="meta" id="aiCount">0 / 2000</p><button type="button" class="btn s" id="aiAskBtn" style="background:linear-gradient(135deg,#7928ca,#4338ca);color:#fff;padding:8px 20px">${I(IC.sparkles)}<span>إجابة وشرح بيطري فوري</span></button></div><p class="meta" style="margin-bottom:6px">استفسارات بيطرية مقترحة سريعة:</p><div class="chips" id="aiSuggestions"><button class="chip" data-q="ما هي الفروق التشريحية بين معدة المجترات ومعدة الخيل؟">معدة المجترات والخيل</button><button class="chip" data-q="اشرح باختصار آلية وأعراض حمى الحليب (Milk Fever) في الأبقار">Milk Fever في الأبقار</button><button class="chip" data-q="ما هو البروتوكول الوقائي والعلاجي لداء الكلب (Rabies) في الحيوانات؟">Rabies وسعار الحيوان</button><button class="chip" data-q="كيف يختلف فحص النبض والحرارة الطبيعية بين الخيل والأبقار والكلاب؟">المؤشرات الحيوية المقارنة</button></div></div><div id="aiResultCard" class="box" style="display:none;background:#fff;border-radius:24px;padding:20px;border-right:4px solid #7928ca;box-shadow:0 4px 20px #00000010"><div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="row" style="gap:8px"><div class="ava" style="background:#7928ca20;color:#7928ca">${I(IC.sparkles)}</div><b style="color:#7928ca;font-size:17px">إجابة وشرح المساعد الطبي البيطري الذكي</b></div><div class="row" style="gap:6px"><button class="btn s o i" id="aiCopyBtn" title="نسخ الإجابة">${I(IC.link)}</button><button class="btn s o" id="aiPostAsQBtn" style="color:var(--c);background:#c4234114">${I(IC.send)}<span>نشر كسؤال</span></button></div></div><div id="aiResultText" style="white-space:pre-wrap;line-height:1.9;font-size:15px;color:#2c2c2e"></div></div>`;
   let currentSub="عام";
   $("#aiSubChips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;$("#aiSubChips").querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");currentSub=b.dataset.s};
   $("#aiSuggestions").onclick=e=>{const b=e.target.closest(".chip");if(!b||!b.dataset.q)return;$("#aiPrompt").value=b.dataset.q;$("#aiCount").textContent=b.dataset.q.length+" / 2000";$("#aiAskBtn").click()};
   $("#aiPrompt").oninput=e=>{$("#aiCount").textContent=e.target.value.length+" / 2000"};
-  $("#aiAskBtn").onclick=async()=>{const prompt=$("#aiPrompt").value.trim();if(prompt.length<4)return toast("اكتب استفساراً بيطرياً واضحاً");const rc=$("#aiResultCard"),rt=$("#aiResultText"),btn=$("#aiAskBtn");rc.style.display="block";rt.textContent="⏳ جارٍ إعداد الشرح الطبي البيطري بواسطة مساعد دكتور وائل بالذكاء الاصطناعي…";btn.disabled=true;try{const res=await fetch("/api/ai-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,subject:currentSub,year:prof?.year||1})});const data=await res.json();if(data.answer){rt.textContent=data.answer;toast("تم تجهيز الإجابة بالذكاء الاصطناعي ✓");rc.scrollIntoView({behavior:"smooth"})}else{rt.textContent=data.error||"تعذر توليد الإجابة بالذكاء الاصطناعي حالياً"}}catch(err){rt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى."}finally{btn.disabled=false}};
-  $("#aiCopyBtn").onclick=async()=>{const t=$("#aiResultText").textContent;if(!t||t.startsWith("⏳"))return;try{await navigator.clipboard.writeText(t);toast("تم نسخ الشرح بنجاح ✓")}catch(e){prompt("نسخ الشرح",t)}};
+  $("#aiAskBtn").onclick=async()=>{const prompt=$("#aiPrompt").value.trim();if(prompt.length<4)return toast("اكتب استفساراً بيطرياً واضحاً");const rc=$("#aiResultCard"),rt=$("#aiResultText"),btn=$("#aiAskBtn");rc.style.display="block";rt.textContent="جارٍ إعداد الشرح الطبي البيطري بواسطة مساعد دكتور وائل بالذكاء الاصطناعي…";btn.disabled=true;try{const res=await fetch("/api/ai-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,subject:currentSub,year:prof?.year||1})});const data=await res.json();if(data.answer){rt.textContent=data.answer;toast("تم تجهيز الإجابة بالذكاء الاصطناعي");rc.scrollIntoView({behavior:"smooth"})}else{rt.textContent=data.error||"تعذر توليد الإجابة بالذكاء الاصطناعي حالياً"}}catch(err){rt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى."}finally{btn.disabled=false}};
+  $("#aiCopyBtn").onclick=async()=>{const t=$("#aiResultText").textContent;if(!t||t.startsWith("جارٍ"))return;try{await navigator.clipboard.writeText(t);toast("تم نسخ الشرح بنجاح")}catch(e){prompt("نسخ الشرح",t)}};
   $("#aiPostAsQBtn").onclick=()=>{const p=$("#aiPrompt").value.trim();if(p){sessionStorage.draftQ=p;sessionStorage.draftSubject=currentSub;location.hash="#/ask"}};
 }
 
@@ -525,14 +567,14 @@ const av=(n,ph,c="")=>ph?`<div class="ava ${c}" style="background-image:url('${e
 const cardH=q=>`<div class="card" onclick="location.hash='#/q/${q.id}'"><div class="row" style="justify-content:space-between"><a class="who" onclick="event.stopPropagation();location.hash='#/u/${esc(q.uid)}'">${av(q.name,q.photo)}<span>${esc(q.name)}</span></a><span class="meta">${ago(q.at)}</span></div><p style="margin:10px 0;line-height:1.8">${esc((q.text||"").slice(0,220))}</p><div class="row">${q.subject?`<span class="tag">${esc(q.subject)}</span>`:""}${q.imgs?.length?`<span class="meta">${I(IC.img)}</span><span class="meta">${q.imgs.length}</span>`:""}<span style="flex:1"></span>${q.answer?`<span class="badge">${I(IC.ok)}</span>`:`<span class="meta">${I(IC.clock)}</span>`}</div></div>`;
 const pic=u=>`<div class="pi" data-u="${esc(u)}" style="background-image:url('${esc(u)}')"></div>`;
 async function loadQ(){const s=await Promise.race([getDocs(query(collection(db,"esalquestions"),where("year","==",prof.year),limit(300))),new Promise((_,r)=>setTimeout(r,12000))]);Q=s.docs.map(d=>({id:d.id,...d.data()}))}
-async function subjV(){A.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">المواد البيطرية</h2><button class="btn s o" onclick="openStatsModal()">${I(IC.chart)}<span>الإحصائيات والتحليلات (Recharts)</span></button></div><div class="tiles" id="tl"><div class="tl sk"></div><div class="tl sk"></div></div>`;let L=[];try{await Promise.all([loadQ(),subs(true).then(x=>{L=x})])}catch(e){}
+async function subjV(){A.innerHTML=`<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">المواد البيطرية</h2><button class="btn s o" onclick="openStatsModal()">${I(IC.chart)}<span>الإحصائيات والتحليلات</span></button></div><div class="tiles" id="tl"><div class="tl sk"></div><div class="tl sk"></div></div>`;let L=[];try{await Promise.all([loadQ(),subs(true).then(x=>{L=x})])}catch(e){}
 $("#tl").innerHTML=L.map(x=>{const n=Q.filter(q=>q.subject==x.name),a=n.filter(q=>q.answer).length;return`<div class="tl" data-n="${esc(x.name)}"><b>${esc(x.name)}</b><span class="meta">${n.length} سؤال · ${a} إجابة</span><div class="bar2"><i style="width:${n.length?Math.round(a*100/n.length):0}%"></i></div></div>`}).join("")||"<p class='meta'>لا توجد مواد بعد</p>";
 $("#tl").onclick=e=>{const t=e.target.closest(".tl");if(!t||!t.dataset.n)return;fs=t.dataset.n;fa=0;location.hash="#/"}}
 async function feed(){
 A.innerHTML=`<div class="hello"><div><div class="meta">أهلاً بك في منصة الطب البيطري</div><h2>${esc(prof.display)}</h2></div><span class="tag">${YN[prof.year]}</span></div>
 <div class="card" style="background:linear-gradient(135deg,#fbf7ff,#f3e8ff);border:1.5px solid #7928ca24;padding:14px 18px;margin-bottom:10px;cursor:pointer" onclick="location.hash='#/ai'"><div class="row" style="justify-content:space-between"><div class="row" style="gap:12px"><div class="ava" style="background:#7928ca;color:#fff">${I(IC.sparkles)}</div><div><b style="font-size:16px;color:#7928ca">المساعد الطبي البيطري الذكي لدكتور وائل</b><p class="meta" style="color:#6b21a8">شرح فوري واستشارات بيطرية وسريرية وإحصائية دقيقة</p></div></div><button class="btn s" style="background:#7928ca;color:#fff;pointer-events:none">استشر الآن</button></div></div>
-<div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #10b98124;padding:14px 18px;margin-bottom:12px;cursor:pointer" onclick="openStatsModal()"><div class="row" style="justify-content:space-between"><div class="row" style="gap:12px"><div class="ava" style="background:#10b981;color:#fff">${I(IC.chart)}</div><div><b style="font-size:16px;color:#047857">إحصائيات تفاعل المواد البيطرية (Recharts)</b><p class="meta" style="color:#065f46">مخططات بيانية تفاعلية لعدد الأسئلة ونسب الإجابة ومستوى تفاعل الطلاب</p></div></div><button class="btn s" style="background:#10b981;color:#fff;pointer-events:none">عرض المخططات</button></div></div>
-<div class="stats" id="sts" style="cursor:pointer" title="اضغط لعرض الرسوم البيانية التفاعلية Recharts"></div>${me&&!me.emailVerified?`<div class="warn">${I(IC.mail)}<span style="flex:1">فعّل بريدك للسؤال والتعليق</span><button class="btn s i o" id="rv" aria-label="resend">${I(IC.send)}</button></div>`:""}<div class="row" style="margin-bottom:14px;flex-wrap:nowrap"><div class="sb" style="flex:1">${I(IC.search)}<input id="sq" placeholder="ابحث في أسئلة الطب البيطري"></div><button class="btn i ${mode=="list"?"":"o"}" aria-label="list" id="b1">${I(IC.list)}</button><button class="btn i ${mode=="grid"?"":"o"}" aria-label="grid" id="b2">${I(IC.grid)}</button><button class="btn i o" id="rf" aria-label="refresh">${I(IC.refresh)}</button></div><div class="chips" id="sj" style="display:none;margin-bottom:12px"></div><div id="l"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></div>`;
+${localStorage.hideStatsCard==='1'?'':`<div class="card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #10b98124;padding:14px 18px;margin-bottom:12px;cursor:pointer;position:relative" onclick="openStatsModal()"><div class="row" style="justify-content:space-between"><div class="row" style="gap:12px"><div class="ava" style="background:#10b981;color:#fff">${I(IC.chart)}</div><div><b style="font-size:16px;color:#047857">إحصائيات تفاعل المواد البيطرية (قاعدة البيانات)</b><p class="meta" style="color:#065f46">مخططات بيانية تفاعلية مربوطة مباشرة بقاعدة البيانات الحية</p></div></div><div class="row" style="gap:6px"><button class="btn s" style="background:#10b981;color:#fff;pointer-events:none">عرض المخططات</button><button type="button" class="btn s o i" onclick="event.stopPropagation();localStorage.hideStatsCard='1';feed();toast('تم حذف قسم الإحصائيات من الرئيسية')" title="حذف من الصفحة الرئيسية" style="width:30px;height:30px;border-radius:50%">${XI}</button></div></div></div>`}
+<div class="stats" id="sts" style="cursor:pointer" title="اضغط لعرض الرسوم البيانية التفاعلية"></div>${me&&!me.emailVerified?`<div class="warn">${I(IC.mail)}<span style="flex:1">فعّل بريدك للسؤال والتعليق</span><button class="btn s i o" id="rv" aria-label="resend">${I(IC.send)}</button></div>`:""}<div class="row" style="margin-bottom:14px;flex-wrap:nowrap"><div class="sb" style="flex:1">${I(IC.search)}<input id="sq" placeholder="ابحث في أسئلة الطب البيطري"></div><button class="btn i ${mode=="list"?"":"o"}" aria-label="list" id="b1">${I(IC.list)}</button><button class="btn i ${mode=="grid"?"":"o"}" aria-label="grid" id="b2">${I(IC.grid)}</button><button class="btn i o" id="rf" aria-label="refresh">${I(IC.refresh)}</button></div><div class="chips" id="sj" style="display:none;margin-bottom:12px"></div><div id="l"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></div>`;
 $("#sts").onclick=()=>openStatsModal();
 $("#rf").onclick=()=>feed();$("#b1").onclick=()=>{mode="list";feed()};$("#b2").onclick=()=>{mode="grid";feed()};
 if($("#rv"))$("#rv").onclick=()=>sendEmailVerification(me).then(()=>toast("تم إرسال رسالة التفعيل")).catch(()=>toast("حاول لاحقًا"));
@@ -553,10 +595,11 @@ let sv=false;try{sv=(await getDoc(doc(db,"esalsaved",me.uid+"_"+id))).exists()}c
 let lk=false,ln=0;try{lk=(await getDoc(doc(db,"esallikes",me.uid+"_"+id))).exists();ln=(await getCountFromServer(query(collection(db,"esallikes"),where("qid","==",id)))).data().count}catch(e){}
 A.innerHTML=`<button class="btn s i o" onclick="history.back()" aria-label="back" style="margin-bottom:12px">${I(IC.back)}</button><div class="box"><div class="row" style="justify-content:space-between"><a class="who" onclick="location.hash='#/u/${esc(q.uid)}'">${av(q.name,q.photo)}<span>${esc(q.name)}</span></a><span class="meta">${ago(q.at)}</span></div>${q.subject?`<span class="tag">${esc(q.subject)}</span>`:""}<p style="margin:12px 0;white-space:pre-wrap;line-height:1.9">${esc(q.text)}</p>${ims(q.imgs)}
 ${q.answer?`<div class="ans"><div class="row">${av(q.ansBy?.name||"د",q.ansBy?.photo)}<b style="color:var(--c);font-size:18px">${esc(q.ansBy?.name||"الإجابة")}</b></div><p style="white-space:pre-wrap;margin-top:8px;line-height:1.9">${esc(q.answer)}</p>${ims(q.ansImgs)}<img class="sig" src="${SIG}" alt=""></div>`:`<p class="meta">${I(IC.clock)}</p>`}
-<div id="aiBox" style="display:none;margin:14px 0;border-right:4px solid #7928ca;background:#fbf7ff;border-radius:18px;padding:16px" class="ans"><div class="row" style="margin-bottom:8px"><div class="ava" style="background:#7928ca20;color:#7928ca">${I(IC.sparkles)}</div><b style="color:#7928ca;font-size:17px">المساعد الذكي لدكتور وائل</b><span style="flex:1"></span><button class="btn s i o" id="aiCp" aria-label="copy" title="نسخ إجابة الذكاء الاصطناعي">${I(IC.link)}</button></div><p id="aiTxt" style="white-space:pre-wrap;line-height:1.9;color:#2c2c2e"></p><button type="button" class="btn s" id="aiAdopt" style="margin-top:10px;background:#7928ca;color:#fff">${I(IC.ok)}<span>اعتماد كإجابة رسمية وإرسال تنبيه للطالب (FCM)</span></button></div>
+<div id="aiBox" style="display:none;margin:14px 0;border-right:4px solid #7928ca;background:#fbf7ff;border-radius:18px;padding:16px" class="ans"><div class="row" style="margin-bottom:8px"><div class="ava" style="background:#7928ca20;color:#7928ca">${I(IC.sparkles)}</div><b style="color:#7928ca;font-size:17px">المساعد الذكي لدكتور وائل</b><span style="flex:1"></span><button class="btn s i o" id="aiCp" aria-label="copy" title="نسخ إجابة الذكاء الاصطناعي">${I(IC.link)}</button></div><p id="aiTxt" style="white-space:pre-wrap;line-height:1.9;color:#2c2c2e"></p>${!q.answer?`<button type="button" class="btn s" id="aiAdopt" style="margin-top:10px;background:#7928ca;color:#fff">${I(IC.ok)}<span>اعتماد كإجابة رسمية وإرسال تنبيه للطالب (FCM)</span></button>`:''}</div>
 <div class="row" style="margin-top:14px"><button class="btn s o" id="tc" aria-label="comments" style="padding:0 16px;height:36px">${I(IC.chat)}<span id="cn">${n}</span></button><button class="btn s o ${lk?"sv-on":""}" id="lk" aria-label="helpful" style="padding:0 16px;height:36px">${I(IC.heart)}<span id="ln">${ln}</span></button><button class="btn s o" id="aiAns" aria-label="AI Answer" style="padding:0 12px;height:36px;color:#7928ca;background:#7928ca14">${I(IC.sparkles)}<span>إجابة الذكاء الاصطناعي</span></button>${!q.answer?`<button class="btn s o" id="ansBtn" aria-label="إجابة دكتور وائل" style="padding:0 12px;height:36px;color:var(--c);background:#c4234114">${I(IC.send)}<span>إضافة إجابة دكتور وائل</span></button>`:""}<button class="btn s i o" id="aiScan" aria-label="فحص الملاءمة" title="فحص ملاءمة السؤال بالذكاء الاصطناعي">${I(IC.shield)}</button><button class="btn s i o" aria-label="link" id="sl">${I(IC.link)}</button><button class="btn s i o" aria-label="image" id="si">${I(IC.img)}</button><button class="btn s i o ${sv?"sv-on":""}" aria-label="save" id="bk">${I(IC.bookmark)}</button><button class="btn s i o" aria-label="report" id="rq">${I(IC.flag)}</button>${q.uid==me.uid&&!q.answer?`<button class="btn s i o" aria-label="edit" id="eq">${I(IC.edit)}</button><button class="btn s i o" aria-label="delete" id="dq">${I(IC.trash)}</button>`:""}</div></div><div id="cm" hidden></div>`;
 const url=location.origin+location.pathname+"#/q/"+id;
 const saveAnswerAndNotify=async(ansText)=>{
+  if(q.answer)return toast("هذا السؤال تمت الإجابة عليه مسبقاً ولا يمكن تعديل إجابته");
   if(!ansText||ansText.trim().length<5)return toast("اكتب إجابة واضحة");
   toast("جارٍ نشر الإجابة وإرسال التنبيه الفوري…");
   try{
@@ -576,17 +619,17 @@ const saveAnswerAndNotify=async(ansText)=>{
         ansByName:"دكتور وائل"
       })
     }).catch(err=>console.warn("Notify error:",err));
-    toast("تم نشر الإجابة وإرسال التنبيه الفوري للطالب بنجاح ✓");
+    toast("تم نشر الإجابة وإرسال التنبيه الفوري للطالب بنجاح");
     view(id);
   }catch(e){toast("تعذر حفظ الإجابة: "+e.message);}
 };
-if($("#aiAdopt"))$("#aiAdopt").onclick=()=>{
+if(!q.answer&&$("#aiAdopt"))$("#aiAdopt").onclick=()=>{
   const t=$("#aiTxt")?.textContent;
-  if(!t||t.startsWith("⏳"))return toast("انتظر توليد إجابة الذكاء الاصطناعي");
+  if(!t||t.startsWith("جارٍ"))return toast("انتظر توليد إجابة الذكاء الاصطناعي");
   saveAnswerAndNotify(t);
 };
-if($("#ansBtn"))$("#ansBtn").onclick=()=>{
-  const o=openSheet(`<h3 style="margin-bottom:6px">إجابة دكتور وائل على السؤال</h3><textarea id="drAnsText" rows="6" maxlength="3000" placeholder="اكتب نص الإجابة هنا…"></textarea><p class="meta" style="color:var(--c)">🔔 سيتم إرسال إشعار فوري (FCM Push Notification) للطالب مباشرة عند الحفظ.</p><div class="row" style="margin-top:10px"><button class="btn" id="drAnsSave" style="flex:1">${I(IC.ok)}<span>نشر وإرسال إشعار فوري</span></button><button class="btn o i" id="drAnsClose">${XI}</button></div>`);
+if(!q.answer&&$("#ansBtn"))$("#ansBtn").onclick=()=>{
+  const o=openSheet(`<h3 style="margin-bottom:6px">إجابة دكتور وائل على السؤال</h3><textarea id="drAnsText" rows="6" maxlength="3000" placeholder="اكتب نص الإجابة هنا…"></textarea><p class="meta" style="color:var(--c)">سيتم إرسال إشعار فوري (FCM Push Notification) للطالب مباشرة عند الحفظ.</p><div class="row" style="margin-top:10px"><button class="btn" id="drAnsSave" style="flex:1">${I(IC.ok)}<span>نشر وإرسال إشعار فوري</span></button><button class="btn o i" id="drAnsClose">${XI}</button></div>`);
   $("#drAnsClose").onclick=()=>o.remove();
   $("#drAnsSave").onclick=async()=>{
     const at=$("#drAnsText").value.trim();
@@ -595,9 +638,9 @@ if($("#ansBtn"))$("#ansBtn").onclick=()=>{
     await saveAnswerAndNotify(at);
   };
 };
-$("#aiAns").onclick=async()=>{const box=$("#aiBox"),txt=$("#aiTxt"),btn=$("#aiAns");box.style.display="block";txt.textContent="⏳ جارٍ إعداد شرح وإجابة بالذكاء الاصطناعي بواسطة مساعد دكتور وائل…";btn.disabled=true;box.scrollIntoView({behavior:"smooth"});try{const r=await fetch("/api/ai-answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionText:q.text,subject:q.subject,year:q.year})});const d=await r.json();if(d.answer){txt.textContent=d.answer;toast("تم تجهيز إجابة الذكاء الاصطناعي ✓")}else{txt.textContent=d.error||"تعذر توليد الإجابة بالذكاء الاصطناعي"}}catch(e){txt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي"}finally{btn.disabled=false}};
+$("#aiAns").onclick=async()=>{const box=$("#aiBox"),txt=$("#aiTxt"),btn=$("#aiAns");box.style.display="block";txt.textContent="جارٍ إعداد شرح وإجابة بالذكاء الاصطناعي بواسطة مساعد دكتور وائل…";btn.disabled=true;box.scrollIntoView({behavior:"smooth"});try{const r=await fetch("/api/ai-answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionText:q.text,subject:q.subject,year:q.year})});const d=await r.json();if(d.answer){txt.textContent=d.answer;toast("تم تجهيز إجابة الذكاء الاصطناعي")}else{txt.textContent=d.error||"تعذر توليد الإجابة بالذكاء الاصطناعي"}}catch(e){txt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي"}finally{btn.disabled=false}};
 $("#aiCp").onclick=async()=>{const t=$("#aiTxt")?.textContent;if(!t)return;try{await navigator.clipboard.writeText(t);toast("تم نسخ إجابة الذكاء الاصطناعي")}catch(e){prompt("الإجابة",t)}};
-$("#aiScan").onclick=async()=>{toast("جارٍ فحص ملاءمة السؤال بالذكاء الاصطناعي…");try{const r=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:q.text,subject:q.subject,name:q.name})});const d=await r.json();if(d.isInappropriate){const del=await ask2(`⚠️ صنّف الذكاء الاصطناعي هذا السؤال كغير لائق:\n"${d.reason||'مخالف للمعايير الأكاديمية'}"\n\nهل ترغب بحذف هذا السؤال نهائياً الآن؟`);if(del){try{await deleteDoc(doc(db,"esalquestions",id));toast("تم حذف السؤال غير اللائق بنجاح ✓");location.hash="#/"}catch(e){toast("تعذر حذف السؤال من قاعدة البيانات")}}}else{toast("السؤال لائق طبياً وأكاديمياً ومطابق للمعايير ✓")}}catch(e){toast("تعذر إتمام الفحص حالياً")}};
+$("#aiScan").onclick=async()=>{toast("جارٍ فحص ملاءمة السؤال بالذكاء الاصطناعي…");try{const r=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:q.text,subject:q.subject,name:q.name})});const d=await r.json();if(d.isInappropriate){const del=await ask2(`صنّف الذكاء الاصطناعي هذا السؤال كغير لائق:\n"${d.reason||'مخالف للمعايير الأكاديمية'}"\n\nهل ترغب بحذف هذا السؤال نهائياً الآن؟`);if(del){try{await deleteDoc(doc(db,"esalquestions",id));toast("تم حذف السؤال غير اللائق بنجاح");location.hash="#/"}catch(e){toast("تعذر حذف السؤال من قاعدة البيانات")}}}else{toast("السؤال لائق طبياً وأكاديمياً ومطابق للمعايير")}}catch(e){toast("تعذر إتمام الفحص حالياً")}};
 $("#sl").onclick=async()=>{try{if(navigator.share){await navigator.share({url,title:"اسأل دكتور وائل"});return}await navigator.clipboard.writeText(url);toast("تم نسخ الرابط")}catch(e){try{await navigator.clipboard.writeText(url);toast("تم نسخ الرابط")}catch(x){prompt("الرابط",url)}}};
 $("#lk").onclick=async()=>{try{if(lk){await deleteDoc(doc(db,"esallikes",me.uid+"_"+id));lk=false;ln--}else{await setDoc(doc(db,"esallikes",me.uid+"_"+id),{uid:me.uid,qid:id,at:serverTimestamp()});lk=true;ln++}$("#lk").classList.toggle("sv-on",lk);$("#ln").textContent=ln}catch(e){toast("تعذر التنفيذ")}};
 $("#bk").onclick=async()=>{try{if(sv)await deleteDoc(doc(db,"esalsaved",me.uid+"_"+id));else await setDoc(doc(db,"esalsaved",me.uid+"_"+id),{uid:me.uid,qid:id,at:serverTimestamp()});sv=!sv;$("#bk").classList.toggle("sv-on",sv);toast(sv?"تم الحفظ":"تم إلغاء الحفظ")}catch(e){toast("تعذر الحفظ")}};
@@ -609,7 +652,7 @@ const cmLoad=async()=>{const cs=(await getDocs(query(collection(db,"esalcomments
 $("#cm").innerHTML=`${cs.map(c=>`<div class="box" style="padding:14px 16px"><div class="row" style="justify-content:space-between"><a class="who" onclick="location.hash='#/u/${esc(c.uid)}'">${av(c.name,c.photo)}<span>${esc(c.name)}</span></a><span class="meta">${ago(c.at)} <button class="btn s i o" style="width:30px;height:30px" ${c.uid==me.uid?`data-del="${c.id}" aria-label="delete">${I(IC.trash)}`:`data-rep="${c.id}" aria-label="report">${I(IC.flag)}`}</button></span></div><p style="margin-top:6px;line-height:1.8">${esc(c.text)}</p></div>`).join("")||"<p class='meta'>لا توجد تعليقات</p>"}${me.emailVerified&&!prof.blocked?`<textarea id="ct" rows="2" placeholder="اكتب تعليقًا"></textarea><button class="btn s i" id="cb" aria-label="send">${I(IC.send)}</button>`:`<p class="meta">فعّل بريدك للتعليق</p>`}`;
 $("#cn").textContent=cs.length;
 $("#cm").onclick=async e=>{const b=e.target.closest("[data-del],[data-rep]");if(!b)return;if(b.dataset.del){if(!await ask2("حذف التعليق؟"))return;try{await deleteDoc(doc(db,"esalcomments",b.dataset.del));await cmLoad()}catch(x){toast("تعذر الحذف")}}else{if(!await ask2("إبلاغ عن هذا التعليق؟"))return;const c=cs.find(z=>z.id==b.dataset.rep);try{await addDoc(collection(db,"esalreports"),{type:"c",qid:id,cid:b.dataset.rep,uid:me.uid,text:(c?.text||"").slice(0,120),at:serverTimestamp()});toast("تم إرسال البلاغ")}catch(x){toast("تعذر الإرسال")}}};
-if($("#cb"))$("#cb").onclick=async()=>{const t=$("#ct").value.trim();if(!t)return;$("#cb").disabled=true;try{const mr=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:"تعليق",name:prof.display})});if(mr.ok){const md=await mr.json();if(md.isInappropriate){toast("🚫 تم حظر التعليق بواسطة الذكاء الاصطناعي: "+(md.reason||"محتوى غير لائق"));$("#cb").disabled=false;return}}await addDoc(collection(db,"esalcomments"),{qid:id,uid:me.uid,name:prof.display,photo:prof.photo||"",text:t.slice(0,1000),at:serverTimestamp()});await cmLoad()}catch(e){toast("تعذر الإرسال");$("#cb").disabled=false}}};
+if($("#cb"))$("#cb").onclick=async()=>{const t=$("#ct").value.trim();if(!t)return;$("#cb").disabled=true;try{const mr=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:"تعليق",name:prof.display})});if(mr.ok){const md=await mr.json();if(md.isInappropriate){toast("تم حظر التعليق بواسطة الذكاء الاصطناعي: "+(md.reason||"محتوى غير لائق"));$("#cb").disabled=false;return}}await addDoc(collection(db,"esalcomments"),{qid:id,uid:me.uid,name:prof.display,photo:prof.photo||"",text:t.slice(0,1000),at:serverTimestamp()});await cmLoad()}catch(e){toast("تعذر الإرسال");$("#cb").disabled=false}}};
 let loaded=false;$("#tc").onclick=async()=>{const c=$("#cm");if(c.hidden){c.hidden=false;if(!loaded){loaded=true;c.innerHTML="…";await cmLoad()}}else c.hidden=true}}
 async function userQs(id){const s=await getDocs(query(collection(db,"esalquestions"),where("uid","==",id),where("year","==",prof.year)));return s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at?.toMillis?.()||0)-(a.at?.toMillis?.()||0))}
 async function userV(id){if(me&&id==me.uid)return meV();A.innerHTML="…";let p=null,L=[];try{[p,L]=await Promise.all([getDoc(doc(db,"esalprofiles",id)).then(x=>x.exists()?x.data():null),userQs(id)])}catch(e){}
@@ -645,15 +688,15 @@ const updateFcmUI=()=>{
     return;
   }
   if(Notification.permission==='granted'){
-    st.textContent="التنبيهات الفورية مفعّلة ونشطة بنجاح ✓";
-    bg.textContent="مفعّلة ✓";
+    st.textContent="التنبيهات الفورية مفعّلة ونشطة بنجاح";
+    bg.textContent="مفعّلة";
     bg.style.color="#10b981";
     bg.style.background="#10b9811a";
     btn.innerHTML=`${I(IC.ok)}<span>التنبيهات مفعّلة</span>`;
     btn.classList.add("o");
   }else if(Notification.permission==='denied'){
     st.textContent="تم رفض إذن التنبيهات من إعدادات المتصفح";
-    bg.textContent="محظورة ✕";
+    bg.textContent="محظورة";
     bg.style.color="#ef4444";
     bg.style.background="#ef44441a";
     btn.innerHTML=`${I(IC.bell)}<span>تفعيل من المتصفح</span>`;
@@ -732,12 +775,12 @@ const pv=()=>{$("#pv").innerHTML=fl.map((f,i)=>`<div class="th" style="backgroun
 $("#pv").onclick=e=>{const b=e.target.closest("button");if(b){fl.splice(+b.dataset.i,1);pv();return}if(e.target.closest("#ad"))$("#qf").click()};
 $("#qf").onchange=e=>{fl=[...fl,...[...e.target.files].filter(f=>f.type.startsWith("image/"))].slice(0,5);e.target.value="";pv()};pv();
 SELS=null;$("#qt").oninput=e=>{$("#cc").textContent=e.target.value.length+" / 2000"};
-$("#aiImp").onclick=async()=>{const t=$("#qt").value.trim();if(t.length<5)return toast("اكتب مسودة السؤال أولاً");toast("جارٍ تحسين الصياغة بالذكاء الاصطناعي…");try{const r=await fetch("/api/improve-question",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:SELS?.name||"عام"})});const d=await r.json();if(d.improvedText){$("#qt").value=d.improvedText;$("#cc").textContent=d.improvedText.length+" / 2000";toast("تم تحسين صياغة السؤال طبياً ✓")}}catch(e){toast("تعذر تحسين السؤال")}};
+$("#aiImp").onclick=async()=>{const t=$("#qt").value.trim();if(t.length<5)return toast("اكتب مسودة السؤال أولاً");toast("جارٍ تحسين الصياغة بالذكاء الاصطناعي…");try{const r=await fetch("/api/improve-question",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:SELS?.name||"عام"})});const d=await r.json();if(d.improvedText){$("#qt").value=d.improvedText;$("#cc").textContent=d.improvedText.length+" / 2000";toast("تم تحسين صياغة السؤال طبياً")}}catch(e){toast("تعذر تحسين السؤال")}};
 $("#sp2").onclick=async()=>{const o=openSheet(`<h3>المادة</h3><div id="sl2" class="meta">…</div>`);let L=[];try{L=await subs(true)}catch(e){}
 $("#sl2").className="";$("#sl2").innerHTML=L.map(x=>`<button class="opt" data-i="${x.id}" dir="ltr">${esc(x.name)}</button>`).join("")+`<button class="opt add" id="am" aria-label="add">${I(IC.plus)}</button>`;
 $("#sl2").onclick=e=>{const b=e.target.closest(".opt");if(!b)return;if(b.id=="am"){o.remove();addSub();return}SELS=L.find(x=>x.id==b.dataset.i);$("#spn").textContent=SELS.name;$("#sp2").classList.add("on");o.remove()}};
 $("#qb").onclick=async()=>{const t=$("#qt").value.trim();if(!SELS)return ok("اختر المادة");if(t.length<5)return ok("اكتب سؤالًا واضحًا");const n=Date.now(),qt=(prof.qTimes||[]).filter(x=>n-x<36e5);if(qt.length>=2)return ok("وصلت للحد: سؤالان كل ساعة");$("#qb").disabled=true;ok("جارٍ تدقيق السؤال بالذكاء الاصطناعي…");
-try{const mr=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:SELS.name,name:prof.display})});if(mr.ok){const md=await mr.json();if(md.isInappropriate){await ask2(`🚫 تم حجب السؤال بواسطة رقابة الذكاء الاصطناعي:\n"${md.reason||'محتوى مخالف لمعايير المنصة التعليمية'}"\n\nيرجى مراجعة وتعديل الصياغة وفق معايير المنصة.`);$("#qb").disabled=false;return}}}catch(err){console.warn("Moderation error:",err)}
+try{const mr=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:t,subject:SELS.name,name:prof.display})});if(mr.ok){const md=await mr.json();if(md.isInappropriate){await ask2(`تم حجب السؤال بواسطة رقابة الذكاء الاصطناعي:\n"${md.reason||'محتوى مخالف لمعايير المنصة التعليمية'}"\n\nيرجى مراجعة وتعديل الصياغة وفق معايير المنصة.`);$("#qb").disabled=false;return}}}catch(err){console.warn("Moderation error:",err)}
 try{ok("جارٍ رفع الصور…");const imgs=await up(fl);qt.push(n);const r=await addDoc(collection(db,"esalquestions"),{uid:me.uid,name:prof.display,photo:prof.photo||"",year:prof.year,subject:SELS.name,sid:SELS.id,text:t,imgs,answer:"",at:serverTimestamp()});prof.qTimes=qt;await updateDoc(doc(db,"esalwael",me.uid),{qTimes:qt});location.hash="#/q/"+r.id}catch(e){ok(e.message);$("#qb").disabled=false}}}
 // الدخول
 function authV(){let sg=false;const draw=()=>{A.innerHTML=`<div class="box" style="max-width:440px;margin:auto"><svg class="ecg" viewBox="0 0 200 40" style="display:block;margin:0 auto 8px"><path d="M0 22H60L68 22L74 6L82 36L89 14L94 22H200"/></svg><h2 style="margin-bottom:10px">${sg?"إنشاء حساب":"تسجيل الدخول"}</h2><button class="gb" id="gg"><svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.6z"/><path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 019.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 000 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg><span>المتابعة بحساب جوجل</span></button><p class="meta" style="text-align:center;margin:4px 0 8px">أو</p>
