@@ -556,7 +556,49 @@ async function aiV(){
   $("#aiSubChips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;$("#aiSubChips").querySelectorAll(".chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");currentSub=b.dataset.s};
   $("#aiSuggestions").onclick=e=>{const b=e.target.closest(".chip");if(!b||!b.dataset.q)return;$("#aiPrompt").value=b.dataset.q;$("#aiCount").textContent=b.dataset.q.length+" / 2000";$("#aiAskBtn").click()};
   $("#aiPrompt").oninput=e=>{$("#aiCount").textContent=e.target.value.length+" / 2000"};
-  $("#aiAskBtn").onclick=async()=>{const prompt=$("#aiPrompt").value.trim();if(prompt.length<4)return toast("اكتب استفساراً بيطرياً واضحاً");const rc=$("#aiResultCard"),rt=$("#aiResultText"),btn=$("#aiAskBtn");rc.style.display="block";rt.textContent="جارٍ إعداد الشرح الطبي البيطري بواسطة مساعد دكتور وائل بالذكاء الاصطناعي…";btn.disabled=true;try{const res=await fetch("/api/ai-chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt,subject:currentSub,year:prof?.year||1})});const data=await res.json();if(data.answer){rt.textContent=data.answer;toast("تم تجهيز الإجابة بالذكاء الاصطناعي");rc.scrollIntoView({behavior:"smooth"})}else{rt.textContent=data.error||"تعذر توليد الإجابة بالذكاء الاصطناعي حالياً"}}catch(err){rt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى."}finally{btn.disabled=false}};
+  $("#aiAskBtn").onclick=async()=>{
+    const prompt=$("#aiPrompt").value.trim();
+    if(prompt.length<4)return toast("اكتب استفساراً بيطرياً واضحاً");
+    const rc=$("#aiResultCard"),rt=$("#aiResultText"),btn=$("#aiAskBtn");
+    rc.style.display="block";
+    rt.textContent="جارٍ إعداد الشرح الطبي البيطري بواسطة مساعد دكتور وائل بالذكاء الاصطناعي…";
+    btn.disabled=true;
+    rc.scrollIntoView({behavior:"smooth"});
+    const fetchChat=async()=>{
+      const res=await fetch("/api/ai-chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({prompt,subject:currentSub||"عام",year:prof?.year||1})
+      });
+      if(!res.ok){
+        const errJson=await res.json().catch(()=>({}));
+        throw new Error(errJson.error||errJson.message||`HTTP ${res.status}`);
+      }
+      return await res.json();
+    };
+    try{
+      let data;
+      try{
+        data=await fetchChat();
+      }catch(firstErr){
+        console.warn("Retrying AI chat:",firstErr);
+        await new Promise(r=>setTimeout(r,500));
+        data=await fetchChat();
+      }
+      if(data&&data.answer){
+        rt.textContent=data.answer;
+        toast("تم تجهيز الإجابة بالذكاء الاصطناعي بنجاح");
+        rc.scrollIntoView({behavior:"smooth"});
+      }else{
+        rt.textContent=data?.error||"تعذر توليد الإجابة بالذكاء الاصطناعي حالياً";
+      }
+    }catch(err){
+      console.error("AI chat error:",err);
+      rt.textContent="تعذر الاتصال بالذكاء الاصطناعي حالياً. يرجى المحاولة مرة أخرى.";
+    }finally{
+      btn.disabled=false;
+    }
+  };
   $("#aiCopyBtn").onclick=async()=>{const t=$("#aiResultText").textContent;if(!t||t.startsWith("جارٍ"))return;try{await navigator.clipboard.writeText(t);toast("تم نسخ الشرح بنجاح")}catch(e){prompt("نسخ الشرح",t)}};
   $("#aiPostAsQBtn").onclick=()=>{const p=$("#aiPrompt").value.trim();if(p){sessionStorage.draftQ=p;sessionStorage.draftSubject=currentSub;location.hash="#/ask"}};
 }
@@ -638,7 +680,47 @@ if(!q.answer&&$("#ansBtn"))$("#ansBtn").onclick=()=>{
     await saveAnswerAndNotify(at);
   };
 };
-$("#aiAns").onclick=async()=>{const box=$("#aiBox"),txt=$("#aiTxt"),btn=$("#aiAns");box.style.display="block";txt.textContent="جارٍ إعداد شرح وإجابة بالذكاء الاصطناعي بواسطة مساعد دكتور وائل…";btn.disabled=true;box.scrollIntoView({behavior:"smooth"});try{const r=await fetch("/api/ai-answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionText:q.text,subject:q.subject,year:q.year})});const d=await r.json();if(d.answer){txt.textContent=d.answer;toast("تم تجهيز إجابة الذكاء الاصطناعي")}else{txt.textContent=d.error||"تعذر توليد الإجابة بالذكاء الاصطناعي"}}catch(e){txt.textContent="حدث خطأ أثناء الاتصال بالذكاء الاصطناعي"}finally{btn.disabled=false}};
+$("#aiAns").onclick=async()=>{
+  const box=$("#aiBox"),txt=$("#aiTxt"),btn=$("#aiAns");
+  box.style.display="block";
+  txt.textContent="جارٍ إعداد شرح وإجابة بالذكاء الاصطناعي بواسطة مساعد دكتور وائل…";
+  btn.disabled=true;
+  box.scrollIntoView({behavior:"smooth"});
+  const fetchAns=async()=>{
+    const r=await fetch("/api/ai-answer",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({questionText:q.text,subject:q.subject||"عام",year:q.year||1})
+    });
+    if(!r.ok){
+      const errData=await r.json().catch(()=>({}));
+      throw new Error(errData.error||errData.message||`HTTP ${r.status}`);
+    }
+    return await r.json();
+  };
+  try{
+    let d;
+    try{
+      d=await fetchAns();
+    }catch(firstErr){
+      console.warn("Retrying AI answer:",firstErr);
+      await new Promise(res=>setTimeout(res,500));
+      d=await fetchAns();
+    }
+    if(d&&d.answer){
+      txt.textContent=d.answer;
+      toast("تم تجهيز إجابة الذكاء الاصطناعي بنجاح");
+      box.scrollIntoView({behavior:"smooth"});
+    }else{
+      txt.textContent=d?.error||"تعذر توليد الإجابة بالذكاء الاصطناعي حالياً";
+    }
+  }catch(e){
+    console.error("AI answer error:",e);
+    txt.textContent="تعذر الحصول على إجابة الذكاء الاصطناعي حالياً. يرجى المحاولة مرة أخرى.";
+  }finally{
+    btn.disabled=false;
+  }
+};
 $("#aiCp").onclick=async()=>{const t=$("#aiTxt")?.textContent;if(!t)return;try{await navigator.clipboard.writeText(t);toast("تم نسخ إجابة الذكاء الاصطناعي")}catch(e){prompt("الإجابة",t)}};
 $("#aiScan").onclick=async()=>{toast("جارٍ فحص ملاءمة السؤال بالذكاء الاصطناعي…");try{const r=await fetch("/api/moderate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:q.text,subject:q.subject,name:q.name})});const d=await r.json();if(d.isInappropriate){const del=await ask2(`صنّف الذكاء الاصطناعي هذا السؤال كغير لائق:\n"${d.reason||'مخالف للمعايير الأكاديمية'}"\n\nهل ترغب بحذف هذا السؤال نهائياً الآن؟`);if(del){try{await deleteDoc(doc(db,"esalquestions",id));toast("تم حذف السؤال غير اللائق بنجاح");location.hash="#/"}catch(e){toast("تعذر حذف السؤال من قاعدة البيانات")}}}else{toast("السؤال لائق طبياً وأكاديمياً ومطابق للمعايير")}}catch(e){toast("تعذر إتمام الفحص حالياً")}};
 $("#sl").onclick=async()=>{try{if(navigator.share){await navigator.share({url,title:"اسأل دكتور وائل"});return}await navigator.clipboard.writeText(url);toast("تم نسخ الرابط")}catch(e){try{await navigator.clipboard.writeText(url);toast("تم نسخ الرابط")}catch(x){prompt("الرابط",url)}}};
