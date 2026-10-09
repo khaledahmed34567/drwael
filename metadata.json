@@ -1,0 +1,8 @@
+{
+  "name": "اسأل دكتور وائل",
+  "description": "منصة اسأل دكتور وائل التعليمية الطبية للأسئلة والاستفسارات والمناقشات الطلابية",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

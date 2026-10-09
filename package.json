@@ -1,0 +1,15 @@
+{
+  "name": "drwael",
+  "version": "1.0.0",
+  "description": "اسأل دكتور وائل",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node -e \"console.log('Build complete')\""
+  },
+  "dependencies": {
+    "@google/genai": "^2.28.0",
+    "express": "^4.21.2"
+  }
+}
